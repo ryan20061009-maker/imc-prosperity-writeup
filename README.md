@@ -1,4 +1,4 @@
-# IMC Prosperity 4 Postmortem
+# IMC Prosperity 4 review
 
 Our team achieved **Global Rank 31** in **IMC Prosperity 4**.
 
