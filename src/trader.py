@@ -1,28 +1,13 @@
-"""Final trader placeholder.
-
-Replace this file with the final submitted strategy or use it as a clean entry point
-for merging product-specific modules.
 """
+Cleaned trader structure.
 
-from typing import Dict, List
-
-try:
-    from datamodel import Order, TradingState
-except ImportError:
-    Order = object
-    TradingState = object
+You can move reusable strategy code here after pasting the original final submission.
+"""
 
 
 class Trader:
-    def run(self, state: TradingState):
-        result: Dict[str, List[Order]] = {}
+    def run(self, state):
+        result = {}
         conversions = 0
-        traderData = ""
-
-        # TODO: load traderData
-        # TODO: update indicators
-        # TODO: run product-specific strategies
-        # TODO: check position limits
-        # TODO: save traderData
-
-        return result, conversions, traderData
+        trader_data = ""
+        return result, conversions, trader_data
