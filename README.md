@@ -128,8 +128,8 @@ Round 5 had many products, so the main problem was prioritization.
 
 ### Fast filtering
 
-We first tested simple market making on all products.  
-If a product was already profitable with market making, we kept it simple and moved on.
+We first tested simple market making and EMA mean reverse on all products.  
+If a product was already profitable with market making or mean reverse, we kept it simple and moved on.
 
 ### Correlation and lag search
 
