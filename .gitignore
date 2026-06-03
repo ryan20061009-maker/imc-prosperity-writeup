@@ -3,6 +3,3 @@ __pycache__/
 .env
 .DS_Store
 .ipynb_checkpoints/
-logs/*.log
-data/*.csv
-data/*.json
