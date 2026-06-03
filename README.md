@@ -402,115 +402,133 @@ The exact Research / Scale values were rounded for submission.
 
 ---
 
-## Round 3: Choosing a Bid
+## Round 3: Celestial Gardeners' Guild
 
 ### Rules
 
-We modeled this round as choosing a bid `p` while the payout also depended on the market-wide average `T`.
+This manual round involved buying `Ornamental Bio-Pods` from a hidden number of counterparties.
 
-The simplified structure was:
-
-- choose a bid `p`;
-- profit increases when the bid captures more counterparties;
-- bidding too high reduces per-unit margin;
-- being below the average `T` creates a nonlinear penalty.
-
-The payoff had the same qualitative shape as:
+Each counterparty had a reserve price uniformly distributed over:
 
 ```text
-profit(p, T) = base_profit(p) * penalty(p, T)
+670, 675, 680, ..., 920
 ```
 
-where the penalty was asymmetric: being too low relative to the average was worse than being slightly high.
+We could submit two bids, `b1` and `b2`.
 
-### Our model
+- If `b1` was higher than a counterparty's reserve price, we traded at `b1`.
+- Otherwise, if `b2` was higher than the reserve price, we could trade at `b2`.
+- If `b2` was not higher than the average second bid of all players, the PnL from the second bid was multiplied by the penalty
 
-Ignoring the population effect, the best bid was around `33`.
+$$
+\left(\frac{920 - \text{avg\_b2}}{920 - b2}\right)^3.
+$$
 
-The real problem was estimating the distribution of the average `T`.  
-We tried to approximate player behavior with a normal distribution and computed expected profit under that assumption.
+All acquired Bio-Pods were then sold the next day at fair value `920`.
+
+### Model
+
+For a fixed estimate of `avg_b2`, the expected value can be computed by brute force over the reserve prices.
+
+For one reserve price `r`, the payoff is:
+
+```text
+if b1 > r:
+    payoff = 920 - b1
+elif b2 > r:
+    payoff = (920 - b2) * penalty
+else:
+    payoff = 0
+```
+
+where
+
+```text
+penalty = 1, if b2 > avg_b2
+penalty = ((920 - avg_b2) / (920 - b2))^3, otherwise
+```
+
+The code skeleton was:
+
+```python
+RESERVES = list(range(670, 921, 5))
+
+def penalty(b2, avg_b2):
+    if b2 > avg_b2:
+        return 1.0
+    return ((920 - avg_b2) / (920 - b2)) ** 3
+
+def ev_for_fixed_average(b1, b2, avg_b2):
+    p = penalty(b2, avg_b2)
+    total = 0.0
+
+    for r in RESERVES:
+        if b1 > r:
+            total += 920 - b1
+        elif b2 > r:
+            total += (920 - b2) * p
+
+    return total / len(RESERVES)
+
+def brute_force(avg_b2):
+    best = None
+
+    for b1 in range(670, 921, 5):
+        for b2 in range(b1, 921, 5):
+            value = ev_for_fixed_average(b1, b2, avg_b2)
+            candidate = (value, b1, b2)
+            if best is None or candidate[0] > best[0]:
+                best = candidate
+
+    return best
+```
+
+It was more convenient to think in terms of the second-bid margin
+
+```text
+p = 920 - b2.
+```
+
+A larger `p` gives more profit per trade but makes `b2` lower, which increases the chance of being penalized if the player average is high.
+
+### Our submission
+
+Ignoring the population effect, the best second-bid margin was around `33`.
+
+The hard part was estimating the average second bid of other players.  
+We modeled the average margin roughly as 大家平均分布在33到43之間
+
+Under this assumption, the expected-value peak moved upward, so we chose a second-bid margin around `39`.
+
+In hindsight, the actual best margin seemed closer to `34` or `35`, meaning the field was less aggressive than our model expected.
 
 ![Manual Round 3 EV curve](figures/manual_round3_ev_curve.png)
 
-We used a model close to:
-
-```text
-T ~ Normal(41.5, 3^2)
-```
-
-Under this belief, the expected-value peak moved upward, so we chose around `39`.
-
-The realized optimum seemed closer to `34` or `35`, meaning the player pool was less aggressive than our model expected.
-
 ---
 
-## Round 4: Options Portfolio Optimization
+## Round 4: Aether Crystal Options
 
 ### Rules
 
-Round 4 was a portfolio construction problem. We could trade the underlying asset, vanilla calls and puts, and exotic options.
+This manual round was independent from the algorithmic trading challenge.
 
-The score was based on average PnL across simulated paths of the underlying.  
-The key instruments included:
+We could trade `AETHER_CRYSTAL` and several options written on it:
 
-- underlying asset,
-- vanilla calls,
-- vanilla puts,
+- the underlying asset,
+- 2-week and 3-week vanilla calls,
+- 2-week and 3-week vanilla puts,
 - chooser option,
 - binary put,
 - knock-out put.
 
-The underlying followed a high-volatility geometric Brownian motion model, so the problem was not just expected value. Tail risk mattered because the final score used a finite number of simulated paths.
+A “week” meant 5 trading days, and the underlying was simulated on a grid of 4 steps per day.  
+The final score was the average PnL across 100 simulated paths of `AETHER_CRYSTAL`.
 
-### Payoff model
+The important rule was that the visible “price” column was cosmetic. The actual decision should be based on the difference between the submitted trade price and the simulated fair value at expiry.
 
-For vanilla options:
+### Our result
 
-```text
-call payoff = max(S_T - K, 0)
-put payoff  = max(K - S_T, 0)
-```
-
-For the chooser option:
-
-```text
-if S_tau > 50:
-    payoff = max(S_T - 50, 0)
-else:
-    payoff = max(50 - S_T, 0)
-```
-
-For the binary put:
-
-```text
-payoff = 10 if S_T < 40 else 0
-```
-
-For the knock-out put:
-
-```text
-payoff = max(45 - S_T, 0) only if the path never goes below 35
-```
-
-### Our approach
-
-Our first approach was to maximize expected value directly.  
-This produced a very risky portfolio and performed badly.
-
-The better approach would have been:
-
-1. simulate many paths,
-2. compute each product's payoff on each path,
-3. search over position vectors,
-4. rank portfolios by both mean PnL and tail-risk metrics.
-
-A risk-aware scoring function could look like:
-
-```text
-score = mean_pnl + 0.05 * p05 + 0.01 * p01 - 0.10 * std - 0.05 * cvar_5
-```
-
-Our actual submission was too EV-focused, which led to a large loss.
+Our submitted portfolio was too focused on expected value and did not control downside risk well enough. Since the underlying had very high volatility and the final score was based on only 100 simulated paths, this created large variance and the result was poor.
 
 ---
 
@@ -518,8 +536,10 @@ Our actual submission was too EV-focused, which led to a large loss.
 
 ### Rules
 
-The final manual round was a one-day portfolio allocation problem.  
-We could buy or sell nine goods based on news, with a total gross allocation limit of `100%`.
+The final manual round was a one-day portfolio allocation problem on the Ignith exchange.
+
+We could buy or sell 9 goods based on the Ashflow Alpha news source.  
+The total gross allocation could not exceed `100%`, and unused budget simply expired.
 
 The main constraint was the convex fee:
 
@@ -529,37 +549,22 @@ fee_i = (abs(q_i) / 100)^2 * 1,000,000
 
 where `q_i` is the percentage allocation to product `i`.
 
-The total allocation constraint was:
+This made concentrated positions expensive. For example:
 
 ```text
-sum(abs(q_i)) <= 100
+100% in one product: total fee = 1,000,000
+50% + 50% in two products: total fee = 500,000
 ```
 
-### Our approach
+The actual product returns were determined by the news and also affected by all teams' submissions.
 
-We converted each news story into a directional score, then allocated more weight to higher-conviction ideas.
+### Our result
 
-Our submitted portfolio was:
+```text
+Manual Trading PnL = +18,416
+```
 
 ![Manual Round 5 result](figures/manual_round5_result.png)
-
-The important fee observation is that concentration is expensive.  
-A single `100%` position pays:
-
-```text
-1,000,000
-```
-
-in fees, while splitting exposure across independent views can reduce the total fee.
-
-For example, an equal split across `n` active products has total fee:
-
-```text
-n * (100 / n / 100)^2 * 1,000,000
-= 1,000,000 / n
-```
-
-So if the signals are comparable, diversification is strongly favored by the fee structure.
 
 ---
 
@@ -578,4 +583,4 @@ Main mistakes:
 - Trying to force unstable IV-smile analysis in Round 3.
 - Poor EMA parameter choice in early VELVET experiments.
 - Trusting correlation too quickly in Round 5.
-- Ignoring risk in Manual Round 4.
+- Taking too much downside risk in Manual Round 4.
