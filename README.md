@@ -91,10 +91,9 @@ Products:
 Options were introduced in this round. Our first idea was to compute implied volatility with Black-Scholes and look for a volatility smile.
 
 This did not work well. The fitted IV curve was not stable enough to produce a reliable trading rule.
+![Manual Round 3 EV curve](figures/manual_round3_ev_curve.png)
 
-![Initial IV smile attempt](figures/options_iv_smile_attempt.png)
-
-In Round 3, we had no strong option strategy, so we mostly used passive quoting. The result was weak.
+In Round 3, we had no strong option strategy, so we mostly used passive quoting The result was weak.
 
 ### VELVETFRUIT_EXTRACT
 
@@ -496,13 +495,12 @@ A larger `p` gives more profit per trade but makes `b2` lower, which increases t
 Ignoring the population effect, the best second-bid margin was around `33`.
 
 The hard part was estimating the average second bid of other players.  
-We modeled the average margin roughly as 大家平均分布在33到43之間
+We modeled the average bid roughly as being uniformly distributed between 33 and 43.
 
 Under this assumption, the expected-value peak moved upward, so we chose a second-bid margin around `39`.
 
 In hindsight, the actual best margin seemed closer to `34` or `35`, meaning the field was less aggressive than our model expected.
 
-![Manual Round 3 EV curve](figures/manual_round3_ev_curve.png)
 
 ---
 
