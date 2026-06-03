@@ -415,12 +415,12 @@ Each counterparty had a reserve price uniformly distributed over:
 
 We could submit two bids, `b1` and `b2`.
 
-- If `b1` was higher than a counterparty's reserve price, we traded at `b1`.
-- Otherwise, if `b2` was higher than the reserve price, we could trade at `b2`.
-- If `b2` was not higher than the average second bid of all players, the PnL from the second bid was multiplied by the penalty
+* If `b1` was higher than a counterparty's reserve price, we traded at `b1`.
+* Otherwise, if `b2` was higher than the reserve price, we could trade at `b2`.
+* If `b2` was not higher than the average second bid of all players, the PnL from the second bid was multiplied by the penalty
 
 $$
-\left(\frac{920 - \text{avg\_b2}}{920 - b2}\right)^3.
+\left(\frac{920 - \text{avg_b2}}{920 - b2}\right)^3.
 $$
 
 All acquired Bio-Pods were then sold the next day at fair value `920`.
@@ -482,24 +482,65 @@ def brute_force(avg_b2):
     return best
 ```
 
-It was more convenient to think in terms of the second-bid margin
+For intuition, we also simplified the second-bid decision to a `0` to `50` scale. This scale only describes the choice of `b2`, not the whole two-bid strategy.
+
+We defined the normalized second-bid margin as:
 
 ```text
-p = 920 - b2.
+k = (920 - b2) / 5
 ```
 
-A larger `p` gives more profit per trade but makes `b2` lower, which increases the chance of being penalized if the player average is high.
+So:
+
+```text
+b2 = 920 - 5k
+```
+
+The possible reserve prices
+
+```text
+670, 675, 680, ..., 920
+```
+
+then correspond to integer levels from `50` down to `0`.
+
+Under this normalization, a larger `k` means:
+
+* lower `b2`,
+* larger margin per successful trade,
+* lower probability of trading,
+* higher risk of being penalized if the average second bid is high.
+
+Similarly, the average second bid of other players can be written as:
+
+```text
+avg_k = (920 - avg_b2) / 5
+```
+
+and the penalty becomes:
+
+```text
+penalty = 1, if k < avg_k
+penalty = (avg_k / k)^3, otherwise
+```
 
 ### Our submission
 
-Ignoring the population effect, the best second-bid margin was around `33`.
+When we said the simplified model was a `0` to `50` game, we meant this normalized second-bid margin `k`.
 
-The hard part was estimating the average second bid of other players.  
-We modeled the average bid roughly as being uniformly distributed between 33 and 43.
+Ignoring the population effect, the best normalized second-bid margin was around `33`.
 
-Under this assumption, the expected-value peak moved upward, so we chose a second-bid margin around `39`.
+The hard part was estimating the average second bid of other players. We roughly modeled the average normalized margin as being between `33` and `43`.
 
-In hindsight, the actual best margin seemed closer to `34` or `35`, meaning the field was less aggressive than our model expected.
+Under this assumption,we chose a normalized second-bid margin around `39`.
+
+In actual bid terms, this corresponds to:
+
+```text
+b2 = 920 - 5 * 39 = 725
+```
+
+In hindsight, the actual best normalized margin seemed closer to `34` or `35`, meaning the field was less aggressive than our model expected.
 
 
 ---
